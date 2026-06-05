@@ -1,0 +1,5 @@
+Las cifras de 2026 deben interpretarse como cierre estimado. La inflación de 2026 corresponde al estimado de Banco de México para diciembre, mientras que la tasa de referencia de Banxico corresponde a la última tasa publicada disponible al momento de generar el reporte.
+
+Los valores reales se presentan ajustados por inflación para facilitar la comparación del poder adquisitivo en el tiempo. La UMA se utiliza como indicador de referencia para contrastar la evolución relativa frente al salario mínimo, sin representar por sí misma una medición directa del ingreso de los hogares.
+
+Las lecturas ejecutivas incluidas en el reporte se generan a partir de los datos calculados por el pipeline y deben interpretarse como apoyo narrativo, no como inferencia causal definitiva.

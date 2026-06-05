@@ -63,15 +63,15 @@ indicadores/
 
 ### Checklist
 
-- [ ] Crear estructura de carpetas.
-- [ ] Mover calculos financieros.
-- [ ] Mover carga desde Google Sheets.
-- [ ] Mover envio de correo.
-- [ ] Mover generacion de visualizaciones.
-- [ ] Mover generacion de PDF.
-- [ ] Crear pipeline modular.
-- [ ] Mantener compatibilidad con ejecucion actual.
-- [ ] Ejecutar pruebas y confirmar que pasan.
+- [x] Crear estructura de carpetas.
+- [x] Mover calculos financieros.
+- [x] Mover carga desde Google Sheets.
+- [x] Mover envio de correo.
+- [x] Mover generacion de visualizaciones.
+- [x] Mover generacion de PDF.
+- [x] Crear pipeline modular.
+- [x] Mantener compatibilidad con ejecucion actual.
+- [x] Ejecutar pruebas y confirmar que pasan.
 
 ## Etapa 2: Definir contratos internos
 
