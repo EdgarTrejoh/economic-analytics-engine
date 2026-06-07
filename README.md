@@ -15,9 +15,12 @@ indicadores/
     schema.py
     data_sources/
       __init__.py
+      base.py
       google_sheets.py
     models/
       __init__.py
+      report_request.py
+      report_result.py
     prompts/
       ai_insights_system_v1.md
     services/
@@ -65,20 +68,23 @@ output/
 ## Flujo actual
 
 1. Lee configuracion desde `.env`.
-2. Convierte una URL de Google Sheets a una URL de exportacion CSV.
-3. Carga, normaliza encabezados y limpia los datos con `pandas`.
-4. Valida columnas requeridas desde un catalogo central de indicadores.
-5. Calcula metricas financieras:
+2. Construye un `ReportRequest` desde la configuracion o usa uno recibido explicitamente.
+3. Carga indicadores mediante una fuente de datos compatible con `DataSource`.
+4. Convierte una URL de Google Sheets a una URL de exportacion CSV cuando se usa `GoogleSheetsDataSource`.
+5. Carga, normaliza encabezados y limpia los datos con `pandas`.
+6. Valida columnas requeridas desde un catalogo central de indicadores.
+7. Calcula metricas financieras:
    - Inflacion anual.
    - Indice de precios.
    - Salario minimo real.
    - UMA real.
    - CAGR nominal y real.
-6. Genera visualizaciones con `matplotlib`.
-7. Genera comentarios ejecutivos para las 5 secciones del PDF.
-8. Crea el PDF ejecutivo con `fpdf`.
-9. Agrega una hoja final con la nota metodologica enviada por configuracion o, si no existe, desde `data/nota_metodologica.txt`.
-10. Si existe `APP_PASSWORD`, envia el PDF por correo usando Gmail SMTP.
+8. Genera visualizaciones con `matplotlib`.
+9. Genera comentarios ejecutivos para las 5 secciones del PDF.
+10. Crea el PDF ejecutivo con `fpdf`.
+11. Agrega una hoja final con la nota metodologica enviada por configuracion o, si no existe, desde `data/nota_metodologica.txt`.
+12. Si existe `APP_PASSWORD`, envia el PDF por correo usando Gmail SMTP.
+13. Devuelve un `ReportResult` con ruta, estado, periodo y bandera de envio.
 
 ## Indicadores
 
@@ -247,11 +253,15 @@ Cobertura actual de pruebas:
 - Carga y limpieza de datos.
 - Catalogo central de indicadores.
 - Preservacion de columnas numericas adicionales para crecimiento futuro.
+- Creacion de `ReportRequest` desde `Settings`.
+- Resultado estructurado `ReportResult` del pipeline.
+- Fuente `GoogleSheetsDataSource` con filtro opcional por periodo.
 - Normalizacion de aliases de columna de año: `Ano`, `Anio`, `Year`, `Ejercicio`.
 - Error de lectura de datos.
 - Error claro de conexion a Google Sheets.
 - Columnas requeridas faltantes.
 - Orquestacion del pipeline.
+- Orquestacion del pipeline con `DataSource` mockeado.
 - Propagacion de errores del pipeline hacia CLI/UI.
 - Generacion de PDF con bloques `Lectura ejecutiva` e `Implicacion`.
 - Nota metodologica en PDF desde `data/nota_metodologica.txt`.
@@ -271,7 +281,7 @@ Cobertura actual de pruebas:
 Estado actual verificado:
 
 ```text
-49 passed
+52 passed
 ```
 
 ## Archivos principales
@@ -296,9 +306,21 @@ Catalogo central de indicadores fuente y derivados. Define columnas requeridas, 
 
 Fachada compatible que reexporta nombres internos de columnas y alias desde `app/indicators.py`.
 
+### `app/models/report_request.py`
+
+Contrato interno para solicitar reportes. Incluye correo receptor, periodo opcional, ruta de salida y nota metodologica en memoria.
+
+### `app/models/report_result.py`
+
+Contrato interno de resultado. Devuelve ruta del PDF, estado, fecha de generacion, periodo calculado y si el correo fue enviado.
+
+### `app/data_sources/base.py`
+
+Define el protocolo `DataSource` con `load_indicators(start_year, end_year)`.
+
 ### `app/data_sources/google_sheets.py`
 
-Contiene la construccion de URL CSV, la normalizacion de encabezados y la carga/limpieza de datos desde Google Sheets. Expone `GoogleSheetsConnectionError` para errores legibles de conexion.
+Contiene `GoogleSheetsDataSource`, la construccion de URL CSV, la normalizacion de encabezados y la carga/limpieza de datos desde Google Sheets. Expone `GoogleSheetsConnectionError` para errores legibles de conexion.
 
 ### `app/services/metrics.py`
 
@@ -326,7 +348,7 @@ Contiene el envio SMTP y cierre seguro de la conexion cuando el servidor se inic
 
 ### `app/services/pipeline.py`
 
-Orquesta el flujo completo: datos, metricas, insights, visualizaciones, PDF, nota metodologica y correo. Registra errores con traceback y los vuelve a propagar para CLI/UI.
+Orquesta el flujo completo usando `ReportRequest`, `DataSource` y `ReportResult`: datos, metricas, insights, visualizaciones, PDF, nota metodologica y correo. Registra errores con traceback y los vuelve a propagar para CLI/UI.
 
 ### `data/nota_metodologica.txt`
 
@@ -346,7 +368,7 @@ Mapa de trabajo para evolucionar el proyecto hacia una aplicacion modular con AP
 
 ## Estado de arquitectura
 
-El proyecto ya completo la Etapa 1 del plan: modularizacion sin cambio de comportamiento general. Tambien incorpora una Etapa 1.5 para centralizar el catalogo de indicadores antes de avanzar a contratos internos.
+El proyecto ya completo la Etapa 1 del plan: modularizacion sin cambio de comportamiento general. Tambien completo la Etapa 1.5 para centralizar el catalogo de indicadores y la Etapa 2 para definir contratos internos.
 
 Estructura base actual:
 
@@ -356,6 +378,7 @@ app/
   indicators.py
   schema.py
   data_sources/
+    base.py
     google_sheets.py
   services/
     ai_insights.py
@@ -367,6 +390,8 @@ app/
   prompts/
     ai_insights_system_v1.md
   models/
+    report_request.py
+    report_result.py
 data/
   nota_metodologica.txt
 output/
@@ -384,7 +409,7 @@ Resumen de etapas:
 
 1. Modularizar sin cambiar comportamiento. Completada.
 1.5. Preparar extensibilidad de indicadores. Completada.
-2. Definir modelos internos como `ReportRequest` y `ReportResult`.
+2. Definir modelos internos como `ReportRequest` y `ReportResult`. Completada.
 3. Crear API backend con FastAPI.
 4. Migrar fuente de datos a BigQuery.
 5. Crear frontend para capturar correo receptor y periodo.
@@ -402,6 +427,6 @@ Resumen de etapas:
 
 ## Siguiente paso recomendado
 
-Iniciar la Etapa 2 del plan: definir contratos internos como `ReportRequest`, `ReportResult` y una interfaz de fuente de datos que permita integrar BigQuery sin acoplarlo al pipeline.
+Iniciar la Etapa 3 del plan: crear API backend con FastAPI usando `ReportRequest`, `ReportResult` y la interfaz de fuente de datos ya definida.
 
 Antes de agregar muchos indicadores al PDF, conviene que la Etapa 2 o una subetapa posterior introduzca una especificacion de secciones de reporte. El catalogo actual permite crecer en datos y calculos con menos friccion, pero las cinco secciones visuales siguen siendo explicitas por diseno.

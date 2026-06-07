@@ -5,6 +5,7 @@ import pytest
 
 from app.data_sources.google_sheets import (
     GoogleSheetsConnectionError,
+    GoogleSheetsDataSource,
     get_sheet_csv_url,
     load_and_clean_data,
 )
@@ -114,3 +115,23 @@ def test_load_and_clean_data_read_csv_error_is_raised(monkeypatch):
         load_and_clean_data("https://docs.google.com/sheet.csv")
 
     assert exc_info.value.__cause__ is original_error
+
+
+def test_google_sheets_data_source_loads_and_filters_period(monkeypatch):
+    cleaned_df = pd.DataFrame(
+        {
+            YEAR_COLUMN: [2017, 2018, 2019],
+            "INPC": [100.0, 105.0, 110.0],
+        }
+    )
+    get_url = MagicMock(return_value="csv-url")
+    load_data = MagicMock(return_value=cleaned_df)
+    monkeypatch.setattr("app.data_sources.google_sheets.get_sheet_csv_url", get_url)
+    monkeypatch.setattr("app.data_sources.google_sheets.load_and_clean_data", load_data)
+
+    data_source = GoogleSheetsDataSource("sheet-url")
+    df = data_source.load_indicators(start_year=2018, end_year=2018)
+
+    get_url.assert_called_once_with("sheet-url")
+    load_data.assert_called_once_with("csv-url")
+    assert df[YEAR_COLUMN].tolist() == [2018]

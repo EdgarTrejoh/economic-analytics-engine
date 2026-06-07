@@ -112,13 +112,15 @@ Esta etapa no convierte todavia el PDF en un constructor dinamico de secciones. 
 
 Definir modelos y contratos simples para que el pipeline no dependa directamente de detalles como Google Sheets, BigQuery o variables sueltas.
 
-### Modelos sugeridos
+### Modelos implementados
 
 ```python
 class ReportRequest:
-    recipient_email: str
-    start_year: int
-    end_year: int
+    recipient_email: str | None
+    start_year: int | None
+    end_year: int | None
+    report_file_name: str
+    nota_metodologica: str | None
 ```
 
 ```python
@@ -133,7 +135,7 @@ class ReportResult:
 
 ```python
 class DataSource:
-    def load_indicators(self, start_year: int, end_year: int):
+    def load_indicators(self, start_year: int | None, end_year: int | None):
         ...
 ```
 
@@ -146,11 +148,11 @@ class DataSource:
 
 ### Checklist
 
-- [ ] Crear `ReportRequest`.
-- [ ] Crear `ReportResult`.
-- [ ] Adaptar pipeline para recibir `ReportRequest`.
-- [ ] Encapsular fuente actual como `GoogleSheetsDataSource`.
-- [ ] Agregar pruebas del pipeline usando mocks.
+- [x] Crear `ReportRequest`.
+- [x] Crear `ReportResult`.
+- [x] Adaptar pipeline para recibir `ReportRequest`.
+- [x] Encapsular fuente actual como `GoogleSheetsDataSource`.
+- [x] Agregar pruebas del pipeline usando mocks.
 
 ## Etapa 3: Crear API backend
 
@@ -377,13 +379,13 @@ Convertir la aplicacion en un servicio desplegable.
 
 ## Primer siguiente paso recomendado
 
-Iniciar con la Etapa 2: definir contratos internos sobre la base ya modularizada y con catalogo central de indicadores.
+Iniciar con la Etapa 3: crear API backend sobre los contratos internos ya definidos.
 
 El primer movimiento concreto seria crear:
 
-1. `ReportRequest`.
-2. `ReportResult`.
-3. Una interfaz o protocolo de fuente de datos.
-4. `GoogleSheetsDataSource` como implementacion compatible con el pipeline actual.
+1. `app/api/main.py`.
+2. Endpoint `POST /reports`.
+3. Validacion de correo y periodo.
+4. Pruebas con `TestClient`.
 
-Con eso la base queda lista para incorporar API, frontend y BigQuery sin acoplarlos al calculo financiero ni al catalogo de indicadores.
+Con eso la base queda lista para exponer la generacion de reportes sin acoplar la API al calculo financiero ni a Google Sheets.

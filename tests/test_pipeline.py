@@ -6,6 +6,7 @@ import pytest
 
 from app.config import Settings
 from app.data_sources.google_sheets import GoogleSheetsConnectionError
+from app.models import ReportRequest, ReportResult
 from app.schema import YEAR_COLUMN
 from app.services import pipeline
 
@@ -21,21 +22,23 @@ def _settings(app_password="", nota_metodologica=None):
     )
 
 
+def _data_source(df):
+    data_source = MagicMock()
+    data_source.load_indicators.return_value = df
+    return data_source
+
+
 def test_run_pipeline_orchestrates_report_without_email(monkeypatch):
     raw_df = pd.DataFrame({YEAR_COLUMN: [2016], "INPC": [100.0]})
     calc_df = pd.DataFrame({YEAR_COLUMN: [2016], "INPC": [100.0]})
     metrics_result = (calc_df, {"nominal_salario": 0.1}, 2016, 2016, 2016)
 
-    get_url = MagicMock(return_value="csv-url")
-    load_data = MagicMock(return_value=raw_df)
     calc_metrics = MagicMock(return_value=metrics_result)
     generate_images = MagicMock(return_value=["p1", "p2", "p3", "p4", "p5"])
     generate_insights = MagicMock(return_value=["insight-1", "insight-2", "insight-3", "insight-4", "insight-5"])
     create_pdf = MagicMock()
     send_email = MagicMock()
 
-    monkeypatch.setattr(pipeline, "get_sheet_csv_url", get_url)
-    monkeypatch.setattr(pipeline, "load_and_clean_data", load_data)
     monkeypatch.setattr(pipeline, "calculate_financial_metrics", calc_metrics)
     monkeypatch.setattr(pipeline, "generate_report_insights", generate_insights)
     monkeypatch.setattr(pipeline, "generate_visualizations", generate_images)
@@ -43,17 +46,51 @@ def test_run_pipeline_orchestrates_report_without_email(monkeypatch):
     monkeypatch.setattr(pipeline, "send_report_email", send_email)
 
     settings = _settings(app_password="", nota_metodologica="Nota desde settings.")
-    pipeline.run_pipeline(settings)
+    data_source = _data_source(raw_df)
+    result = pipeline.run_pipeline(settings, data_source=data_source)
 
-    get_url.assert_called_once_with(_settings().sheet_url)
-    load_data.assert_called_once_with("csv-url")
+    data_source.load_indicators.assert_called_once_with(None, None)
     calc_metrics.assert_called_once_with(raw_df)
     generate_insights.assert_called_once_with(calc_df, metrics_result[1], 2016, 2016, 2016, settings)
     generate_images.assert_called_once()
     create_pdf.assert_called_once()
     assert create_pdf.call_args.args[-2] == ["insight-1", "insight-2", "insight-3", "insight-4", "insight-5"]
     assert create_pdf.call_args.args[-1] == "Nota desde settings."
+    assert result.email_sent is False
+    assert result.report_file_path == "reporte.pdf"
+    assert result.status == "completed"
+    assert isinstance(result, ReportResult)
     send_email.assert_not_called()
+
+
+def test_run_pipeline_uses_explicit_report_request(monkeypatch):
+    settings = _settings(app_password="")
+    request = ReportRequest(
+        recipient_email="custom@example.com",
+        start_year=2018,
+        end_year=2020,
+        report_file_name="custom.pdf",
+        nota_metodologica="Nota custom.",
+    )
+    raw_df = pd.DataFrame({YEAR_COLUMN: [2018], "INPC": [100.0]})
+    metrics_result = (raw_df, {"nominal_salario": 0.1}, 2018, 2018, 2020)
+    data_source = _data_source(raw_df)
+
+    monkeypatch.setattr(pipeline, "calculate_financial_metrics", MagicMock(return_value=metrics_result))
+    monkeypatch.setattr(pipeline, "generate_report_insights", MagicMock(return_value=["i1", "i2", "i3", "i4", "i5"]))
+    monkeypatch.setattr(pipeline, "generate_visualizations", MagicMock(return_value=["p1", "p2", "p3", "p4", "p5"]))
+    create_pdf = MagicMock()
+    monkeypatch.setattr(pipeline, "create_pdf_report", create_pdf)
+    monkeypatch.setattr(pipeline, "send_report_email", MagicMock())
+
+    result = pipeline.run_pipeline(settings, request=request, data_source=data_source)
+
+    data_source.load_indicators.assert_called_once_with(2018, 2020)
+    assert create_pdf.call_args.args[-3] == "custom.pdf"
+    assert create_pdf.call_args.args[-1] == "Nota custom."
+    assert result.report_file_path == "custom.pdf"
+    assert result.start_year == 2018
+    assert result.end_year == 2020
 
 
 def test_run_pipeline_sends_email_when_password_is_present(monkeypatch):
@@ -61,8 +98,6 @@ def test_run_pipeline_sends_email_when_password_is_present(monkeypatch):
     raw_df = pd.DataFrame({YEAR_COLUMN: [2016], "INPC": [100.0]})
     metrics_result = (raw_df, {"nominal_salario": 0.1}, 2016, 2016, 2016)
 
-    monkeypatch.setattr(pipeline, "get_sheet_csv_url", MagicMock(return_value="csv-url"))
-    monkeypatch.setattr(pipeline, "load_and_clean_data", MagicMock(return_value=raw_df))
     monkeypatch.setattr(pipeline, "calculate_financial_metrics", MagicMock(return_value=metrics_result))
     monkeypatch.setattr(pipeline, "generate_report_insights", MagicMock(return_value=["i1", "i2", "i3", "i4", "i5"]))
     monkeypatch.setattr(pipeline, "generate_visualizations", MagicMock(return_value=["p1", "p2", "p3", "p4", "p5"]))
@@ -70,7 +105,7 @@ def test_run_pipeline_sends_email_when_password_is_present(monkeypatch):
     send_email = MagicMock()
     monkeypatch.setattr(pipeline, "send_report_email", send_email)
 
-    pipeline.run_pipeline(settings)
+    result = pipeline.run_pipeline(settings, data_source=_data_source(raw_df))
 
     send_email.assert_called_once_with(
         settings.sender_email,
@@ -78,20 +113,17 @@ def test_run_pipeline_sends_email_when_password_is_present(monkeypatch):
         settings.recipient_email,
         settings.report_file_name,
     )
+    assert result.email_sent is True
 
 
-def test_run_pipeline_logs_and_reraises_failures(monkeypatch, caplog):
-    get_url = MagicMock(return_value="csv-url")
-    load_data = MagicMock(side_effect=GoogleSheetsConnectionError("No se pudo conectar a Google Sheets."))
-
-    monkeypatch.setattr(pipeline, "get_sheet_csv_url", get_url)
-    monkeypatch.setattr(pipeline, "load_and_clean_data", load_data)
+def test_run_pipeline_logs_and_reraises_failures(caplog):
+    data_source = MagicMock()
+    data_source.load_indicators.side_effect = GoogleSheetsConnectionError("No se pudo conectar a Google Sheets.")
 
     with pytest.raises(GoogleSheetsConnectionError, match="No se pudo conectar a Google Sheets"):
-        pipeline.run_pipeline(_settings(app_password=""))
+        pipeline.run_pipeline(_settings(app_password=""), data_source=data_source)
 
-    get_url.assert_called_once_with(_settings().sheet_url)
-    load_data.assert_called_once_with("csv-url")
+    data_source.load_indicators.assert_called_once_with(None, None)
     assert "El pipeline fallo en la ejecucion" in caplog.text
 
 

@@ -13,6 +13,16 @@ class GoogleSheetsConnectionError(ConnectionError):
     """Error al descargar datos desde Google Sheets."""
 
 
+class GoogleSheetsDataSource:
+    def __init__(self, sheet_url):
+        self.sheet_url = sheet_url
+
+    def load_indicators(self, start_year=None, end_year=None):
+        url_csv_export = get_sheet_csv_url(self.sheet_url)
+        df = load_and_clean_data(url_csv_export)
+        return _filter_by_period(df, start_year, end_year)
+
+
 def get_sheet_csv_url(sheet_url):
     """Extrae el Document ID y el GID de una URL de Google Sheets y arma la URL CSV."""
     try:
@@ -61,3 +71,12 @@ def _normalize_columns(df):
         for column in df.columns
     }
     return df.rename(columns=normalized_columns)
+
+
+def _filter_by_period(df, start_year=None, end_year=None):
+    filtered_df = df
+    if start_year is not None:
+        filtered_df = filtered_df.loc[filtered_df[YEAR_COLUMN] >= int(start_year)]
+    if end_year is not None:
+        filtered_df = filtered_df.loc[filtered_df[YEAR_COLUMN] <= int(end_year)]
+    return filtered_df.copy()
