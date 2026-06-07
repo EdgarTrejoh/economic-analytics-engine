@@ -11,6 +11,7 @@ indicadores/
   app/
     __init__.py
     config.py
+    indicators.py
     schema.py
     data_sources/
       __init__.py
@@ -66,17 +67,36 @@ output/
 1. Lee configuracion desde `.env`.
 2. Convierte una URL de Google Sheets a una URL de exportacion CSV.
 3. Carga, normaliza encabezados y limpia los datos con `pandas`.
-4. Calcula metricas financieras:
+4. Valida columnas requeridas desde un catalogo central de indicadores.
+5. Calcula metricas financieras:
    - Inflacion anual.
    - Indice de precios.
    - Salario minimo real.
    - UMA real.
    - CAGR nominal y real.
-5. Genera visualizaciones con `matplotlib`.
-6. Genera comentarios ejecutivos para las 5 secciones del PDF.
-7. Crea el PDF ejecutivo con `fpdf`.
-8. Agrega una hoja final con la nota metodologica enviada por configuracion o, si no existe, desde `data/nota_metodologica.txt`.
-9. Si existe `APP_PASSWORD`, envia el PDF por correo usando Gmail SMTP.
+6. Genera visualizaciones con `matplotlib`.
+7. Genera comentarios ejecutivos para las 5 secciones del PDF.
+8. Crea el PDF ejecutivo con `fpdf`.
+9. Agrega una hoja final con la nota metodologica enviada por configuracion o, si no existe, desde `data/nota_metodologica.txt`.
+10. Si existe `APP_PASSWORD`, envia el PDF por correo usando Gmail SMTP.
+
+## Indicadores
+
+El proyecto incorpora una Fase 1.5 de extensibilidad antes de avanzar a contratos internos. Los nombres tecnicos, alias, unidades y columnas requeridas viven en:
+
+```text
+app/indicators.py
+```
+
+`app/schema.py` se conserva como fachada compatible para imports existentes.
+
+El catalogo actual define:
+
+- Columnas fuente: `Año`, `INPC`, `Salario_Minimo_Diario`, `UMA_diario`, `Tasa_Referencia_Banxico`.
+- Columnas derivadas: `inflacion`, `Indice_de_Precios`, `Salario_Minimo_Real`, `UMA_Real`, `Salario_Minimo_Real_Normalizado`, `UMA_Real_Normalizado`.
+- Alias aceptados para año: `Ano`, `Anio`, `Year`, `Ejercicio`.
+
+La fuente de Google Sheets valida las columnas requeridas, pero conserva columnas numericas adicionales. Esto permite incorporar nuevos indicadores al dataset sin perderlos durante la carga. Para que un nuevo indicador aparezca en el PDF aun se debe agregar una seccion, grafica o insight correspondiente.
 
 ## Insights ejecutivos
 
@@ -225,6 +245,8 @@ Cobertura actual de pruebas:
 - Manejo de error de autenticacion SMTP.
 - Construccion de URL CSV desde Google Sheets.
 - Carga y limpieza de datos.
+- Catalogo central de indicadores.
+- Preservacion de columnas numericas adicionales para crecimiento futuro.
 - Normalizacion de aliases de columna de año: `Ano`, `Anio`, `Year`, `Ejercicio`.
 - Error de lectura de datos.
 - Error claro de conexion a Google Sheets.
@@ -249,7 +271,7 @@ Cobertura actual de pruebas:
 Estado actual verificado:
 
 ```text
-45 passed
+49 passed
 ```
 
 ## Archivos principales
@@ -266,9 +288,13 @@ Interfaz temporal en Streamlit para capturar correo destinatario, editar la nota
 
 Carga configuracion desde `.env`, incluyendo correo, Google Sheets, ruta de salida del reporte, nota metodologica opcional e insights opcionales con IA.
 
+### `app/indicators.py`
+
+Catalogo central de indicadores fuente y derivados. Define columnas requeridas, alias, unidades y validacion comun.
+
 ### `app/schema.py`
 
-Centraliza los nombres internos de columnas y alias aceptados del Google Sheet. El pipeline normaliza encabezados como `Ano`, `Anio`, `Year` o `Ejercicio` hacia `Año`.
+Fachada compatible que reexporta nombres internos de columnas y alias desde `app/indicators.py`.
 
 ### `app/data_sources/google_sheets.py`
 
@@ -320,13 +346,14 @@ Mapa de trabajo para evolucionar el proyecto hacia una aplicacion modular con AP
 
 ## Estado de arquitectura
 
-El proyecto ya completo la Etapa 1 del plan: modularizacion sin cambio de comportamiento general. El codigo principal esta separado por responsabilidades y `main.py` queda como punto de entrada principal.
+El proyecto ya completo la Etapa 1 del plan: modularizacion sin cambio de comportamiento general. Tambien incorpora una Etapa 1.5 para centralizar el catalogo de indicadores antes de avanzar a contratos internos.
 
 Estructura base actual:
 
 ```text
 app/
   config.py
+  indicators.py
   schema.py
   data_sources/
     google_sheets.py
@@ -356,6 +383,7 @@ La evolucion planeada esta documentada en `plan_migracion_modular.md`.
 Resumen de etapas:
 
 1. Modularizar sin cambiar comportamiento. Completada.
+1.5. Preparar extensibilidad de indicadores. Completada.
 2. Definir modelos internos como `ReportRequest` y `ReportResult`.
 3. Crear API backend con FastAPI.
 4. Migrar fuente de datos a BigQuery.
@@ -375,3 +403,5 @@ Resumen de etapas:
 ## Siguiente paso recomendado
 
 Iniciar la Etapa 2 del plan: definir contratos internos como `ReportRequest`, `ReportResult` y una interfaz de fuente de datos que permita integrar BigQuery sin acoplarlo al pipeline.
+
+Antes de agregar muchos indicadores al PDF, conviene que la Etapa 2 o una subetapa posterior introduzca una especificacion de secciones de reporte. El catalogo actual permite crecer en datos y calculos con menos friccion, pero las cinco secciones visuales siguen siendo explicitas por diseno.

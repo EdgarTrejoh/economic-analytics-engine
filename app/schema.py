@@ -1,14 +1,8 @@
-YEAR_COLUMN = "Año"
-INPC_COLUMN = "INPC"
-MINIMUM_WAGE_COLUMN = "Salario_Minimo_Diario"
-UMA_COLUMN = "UMA_diario"
-BANXICO_RATE_COLUMN = "Tasa_Referencia_Banxico"
-
-COLUMN_ALIASES = {
-    "Año": YEAR_COLUMN,
-    "Ano": YEAR_COLUMN,
-    "Anio": YEAR_COLUMN,
-    "Year": YEAR_COLUMN,
-    "Ejercicio": YEAR_COLUMN,
-}
-
+from app.indicators import (
+    BANXICO_RATE_COLUMN,
+    COLUMN_ALIASES,
+    INPC_COLUMN,
+    MINIMUM_WAGE_COLUMN,
+    UMA_COLUMN,
+    YEAR_COLUMN,
+)

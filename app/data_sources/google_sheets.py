@@ -3,7 +3,7 @@ from urllib.parse import parse_qs, urlparse
 
 import pandas as pd
 
-from app.schema import COLUMN_ALIASES, YEAR_COLUMN
+from app.indicators import COLUMN_ALIASES, YEAR_COLUMN, require_columns
 
 
 logger = logging.getLogger(__name__)
@@ -43,6 +43,7 @@ def load_and_clean_data(url_csv_export):
 
     try:
         df = _normalize_columns(df)
+        require_columns(df)
         df[YEAR_COLUMN] = pd.to_numeric(df[YEAR_COLUMN], errors="coerce").astype("Int64")
         cols_to_float = [col for col in df.columns if col != YEAR_COLUMN]
         df[cols_to_float] = df[cols_to_float].astype(float)

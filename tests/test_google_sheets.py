@@ -58,6 +58,28 @@ def test_load_and_clean_data_converts_types_and_drops_rows_without_year(monkeypa
     assert cleaned_df["INPC"].dtype == "float64"
 
 
+def test_load_and_clean_data_preserves_extra_numeric_indicators(monkeypatch):
+    raw_df = pd.DataFrame(
+        {
+            "Año": ["2016", "2018"],
+            "INPC": ["100.0", "110.25"],
+            "Salario_Minimo_Diario": ["70.0", "84.7"],
+            "UMA_diario": ["70.0", "77.175"],
+            "Tasa_Referencia_Banxico": ["4.0", "6.0"],
+            "Nuevo_Indicador": ["1.5", "2.5"],
+        }
+    )
+    monkeypatch.setattr(
+        "app.data_sources.google_sheets.pd.read_csv",
+        MagicMock(return_value=raw_df),
+    )
+
+    cleaned_df = load_and_clean_data("https://docs.google.com/sheet.csv")
+
+    assert "Nuevo_Indicador" in cleaned_df.columns
+    assert cleaned_df["Nuevo_Indicador"].tolist() == [1.5, 2.5]
+
+
 @pytest.mark.parametrize("year_alias", ["Ano", "Anio", "Year", "Ejercicio"])
 def test_load_and_clean_data_normalizes_year_column_aliases(monkeypatch, year_alias):
     raw_df = pd.DataFrame(

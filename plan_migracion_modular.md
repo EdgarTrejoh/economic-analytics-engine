@@ -73,6 +73,39 @@ indicadores/
 - [x] Mantener compatibilidad con ejecucion actual.
 - [x] Ejecutar pruebas y confirmar que pasan.
 
+## Etapa 1.5: Preparar extensibilidad de indicadores
+
+### Objetivo
+
+Antes de avanzar a contratos externos, reducir el acoplamiento interno de columnas e indicadores para que el reporte pueda crecer sin duplicar nombres tecnicos en varios modulos.
+
+La Etapa 2 define como se solicita y devuelve un reporte, pero no resuelve por si sola como se agregan nuevos indicadores al flujo analitico. Si esa base no se atiende, cada nuevo indicador obligaria a tocar fuente de datos, calculos, graficas, PDF, payload de IA y pruebas de forma dispersa.
+
+### Entregables
+
+- Catalogo central de indicadores en `app/indicators.py`.
+- Constantes y metadata de columnas fuente y columnas derivadas.
+- Alias de columnas administrados desde el catalogo.
+- Validacion unica de columnas requeridas.
+- Compatibilidad de `app/schema.py` como fachada para imports existentes.
+- Carga de datos que conserva indicadores numericos adicionales.
+- Tests del catalogo y de preservacion de columnas extra.
+
+### Checklist
+
+- [x] Crear `app/indicators.py`.
+- [x] Mantener compatibilidad de `app/schema.py`.
+- [x] Usar el catalogo en carga de datos.
+- [x] Usar el catalogo en calculos financieros.
+- [x] Usar el catalogo en visualizaciones.
+- [x] Usar el catalogo en payload de insights.
+- [x] Agregar pruebas de catalogo.
+- [x] Agregar prueba para columnas extra en fuente de datos.
+
+### Limite consciente
+
+Esta etapa no convierte todavia el PDF en un constructor dinamico de secciones. Las cinco secciones actuales se conservan para no cambiar el comportamiento del reporte. La siguiente mejora natural seria definir `ReportSection` o una especificacion de secciones para que nuevas graficas e insights se agreguen por configuracion y no por codigo duplicado.
+
 ## Etapa 2: Definir contratos internos
 
 ### Objetivo
@@ -344,12 +377,13 @@ Convertir la aplicacion en un servicio desplegable.
 
 ## Primer siguiente paso recomendado
 
-Iniciar con la Etapa 1: modularizar el script actual sin cambiar comportamiento.
+Iniciar con la Etapa 2: definir contratos internos sobre la base ya modularizada y con catalogo central de indicadores.
 
-El primer movimiento concreto seria separar:
+El primer movimiento concreto seria crear:
 
-1. Calculos financieros en `app/services/metrics.py`.
-2. Envio de correo en `app/services/email_sender.py`.
-3. Carga desde Google Sheets en `app/data_sources/google_sheets.py`.
+1. `ReportRequest`.
+2. `ReportResult`.
+3. Una interfaz o protocolo de fuente de datos.
+4. `GoogleSheetsDataSource` como implementacion compatible con el pipeline actual.
 
-Con eso la base queda lista para incorporar API, frontend y BigQuery de forma ordenada.
+Con eso la base queda lista para incorporar API, frontend y BigQuery sin acoplarlos al calculo financiero ni al catalogo de indicadores.

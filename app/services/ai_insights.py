@@ -5,7 +5,15 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from app.schema import YEAR_COLUMN
+from app.indicators import (
+    BANXICO_RATE_COLUMN,
+    INFLATION_COLUMN,
+    NORMALIZED_REAL_MINIMUM_WAGE_COLUMN,
+    NORMALIZED_REAL_UMA_COLUMN,
+    REAL_MINIMUM_WAGE_COLUMN,
+    REAL_UMA_COLUMN,
+    YEAR_COLUMN,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -129,59 +137,59 @@ def build_insight_payload(df, cagrs, base_year, start_year, end_year):
             {
                 "section_id": "poder_adquisitivo",
                 "nombre": "Evolucion del Poder Adquisitivo: Salario vs. UMA",
-                "salario_real_inicial": float(first_row["Salario_Minimo_Real"]),
-                "salario_real_inicial_texto": _fmt_number(first_row["Salario_Minimo_Real"]),
-                "salario_real_final": float(last_row["Salario_Minimo_Real"]),
-                "salario_real_final_texto": _fmt_number(last_row["Salario_Minimo_Real"]),
-                "uma_real_inicial": float(first_row["UMA_Real"]),
-                "uma_real_inicial_texto": _fmt_number(first_row["UMA_Real"]),
-                "uma_real_final": float(last_row["UMA_Real"]),
-                "uma_real_final_texto": _fmt_number(last_row["UMA_Real"]),
-                "brecha_salario_uma_real_final": float(last_row["Salario_Minimo_Real"] - last_row["UMA_Real"]),
+                "salario_real_inicial": float(first_row[REAL_MINIMUM_WAGE_COLUMN]),
+                "salario_real_inicial_texto": _fmt_number(first_row[REAL_MINIMUM_WAGE_COLUMN]),
+                "salario_real_final": float(last_row[REAL_MINIMUM_WAGE_COLUMN]),
+                "salario_real_final_texto": _fmt_number(last_row[REAL_MINIMUM_WAGE_COLUMN]),
+                "uma_real_inicial": float(first_row[REAL_UMA_COLUMN]),
+                "uma_real_inicial_texto": _fmt_number(first_row[REAL_UMA_COLUMN]),
+                "uma_real_final": float(last_row[REAL_UMA_COLUMN]),
+                "uma_real_final_texto": _fmt_number(last_row[REAL_UMA_COLUMN]),
+                "brecha_salario_uma_real_final": float(last_row[REAL_MINIMUM_WAGE_COLUMN] - last_row[REAL_UMA_COLUMN]),
                 "brecha_salario_uma_real_final_texto": _fmt_number(
-                    last_row["Salario_Minimo_Real"] - last_row["UMA_Real"]
+                    last_row[REAL_MINIMUM_WAGE_COLUMN] - last_row[REAL_UMA_COLUMN]
                 ),
-                "crecimiento_salario_real_periodo": float(last_row["Salario_Minimo_Real"] - first_row["Salario_Minimo_Real"]),
+                "crecimiento_salario_real_periodo": float(last_row[REAL_MINIMUM_WAGE_COLUMN] - first_row[REAL_MINIMUM_WAGE_COLUMN]),
                 "crecimiento_salario_real_periodo_texto": _fmt_number(
-                    last_row["Salario_Minimo_Real"] - first_row["Salario_Minimo_Real"]
+                    last_row[REAL_MINIMUM_WAGE_COLUMN] - first_row[REAL_MINIMUM_WAGE_COLUMN]
                 ),
-                "crecimiento_uma_real_periodo": float(last_row["UMA_Real"] - first_row["UMA_Real"]),
-                "crecimiento_uma_real_periodo_texto": _fmt_number(last_row["UMA_Real"] - first_row["UMA_Real"]),
+                "crecimiento_uma_real_periodo": float(last_row[REAL_UMA_COLUMN] - first_row[REAL_UMA_COLUMN]),
+                "crecimiento_uma_real_periodo_texto": _fmt_number(last_row[REAL_UMA_COLUMN] - first_row[REAL_UMA_COLUMN]),
                 "crecimiento_relativo_salario_real_periodo": _safe_ratio_change(
-                    first_row["Salario_Minimo_Real"],
-                    last_row["Salario_Minimo_Real"],
+                    first_row[REAL_MINIMUM_WAGE_COLUMN],
+                    last_row[REAL_MINIMUM_WAGE_COLUMN],
                 ),
                 "crecimiento_relativo_salario_real_periodo_texto": _fmt_percent(
-                    _safe_ratio_change(first_row["Salario_Minimo_Real"], last_row["Salario_Minimo_Real"])
+                    _safe_ratio_change(first_row[REAL_MINIMUM_WAGE_COLUMN], last_row[REAL_MINIMUM_WAGE_COLUMN])
                 ),
                 "crecimiento_relativo_uma_real_periodo": _safe_ratio_change(
-                    first_row["UMA_Real"],
-                    last_row["UMA_Real"],
+                    first_row[REAL_UMA_COLUMN],
+                    last_row[REAL_UMA_COLUMN],
                 ),
                 "crecimiento_relativo_uma_real_periodo_texto": _fmt_percent(
-                    _safe_ratio_change(first_row["UMA_Real"], last_row["UMA_Real"])
+                    _safe_ratio_change(first_row[REAL_UMA_COLUMN], last_row[REAL_UMA_COLUMN])
                 ),
                 "lectura_esperada": "Comparar salario minimo real contra UMA real sin atribuir causalidades no soportadas.",
             },
             {
                 "section_id": "base_2016",
                 "nombre": f"Salario Minimo vs. UMA (Base {base_year} = 100)",
-                "salario_real_normalizado_final": float(last_row["Salario_Minimo_Real_Normalizado"]),
-                "salario_real_normalizado_final_texto": _fmt_number(last_row["Salario_Minimo_Real_Normalizado"]),
-                "uma_real_normalizado_final": float(last_row["UMA_Real_Normalizado"]),
-                "uma_real_normalizado_final_texto": _fmt_number(last_row["UMA_Real_Normalizado"]),
+                "salario_real_normalizado_final": float(last_row[NORMALIZED_REAL_MINIMUM_WAGE_COLUMN]),
+                "salario_real_normalizado_final_texto": _fmt_number(last_row[NORMALIZED_REAL_MINIMUM_WAGE_COLUMN]),
+                "uma_real_normalizado_final": float(last_row[NORMALIZED_REAL_UMA_COLUMN]),
+                "uma_real_normalizado_final_texto": _fmt_number(last_row[NORMALIZED_REAL_UMA_COLUMN]),
                 "brecha_normalizada_final": float(
-                    last_row["Salario_Minimo_Real_Normalizado"] - last_row["UMA_Real_Normalizado"]
+                    last_row[NORMALIZED_REAL_MINIMUM_WAGE_COLUMN] - last_row[NORMALIZED_REAL_UMA_COLUMN]
                 ),
                 "brecha_normalizada_final_texto": _fmt_number(
-                    last_row["Salario_Minimo_Real_Normalizado"] - last_row["UMA_Real_Normalizado"]
+                    last_row[NORMALIZED_REAL_MINIMUM_WAGE_COLUMN] - last_row[NORMALIZED_REAL_UMA_COLUMN]
                 ),
                 "relacion_salario_vs_uma_final": _safe_ratio(
-                    last_row["Salario_Minimo_Real_Normalizado"],
-                    last_row["UMA_Real_Normalizado"],
+                    last_row[NORMALIZED_REAL_MINIMUM_WAGE_COLUMN],
+                    last_row[NORMALIZED_REAL_UMA_COLUMN],
                 ),
                 "relacion_salario_vs_uma_final_texto": _fmt_number(
-                    _safe_ratio(last_row["Salario_Minimo_Real_Normalizado"], last_row["UMA_Real_Normalizado"])
+                    _safe_ratio(last_row[NORMALIZED_REAL_MINIMUM_WAGE_COLUMN], last_row[NORMALIZED_REAL_UMA_COLUMN])
                 ),
                 "lectura_esperada": "Explicar la brecha indexada acumulada desde el año base.",
             },
@@ -201,19 +209,19 @@ def build_insight_payload(df, cagrs, base_year, start_year, end_year):
             {
                 "section_id": "inflacion_banxico",
                 "nombre": "Inflacion Anual y Politica Monetaria",
-                "inflacion_maxima": float(inflation_df["inflacion"].max()),
-                "inflacion_maxima_texto": _fmt_percent(inflation_df["inflacion"].max()),
-                "inflacion_minima": float(inflation_df["inflacion"].min()),
-                "inflacion_minima_texto": _fmt_percent(inflation_df["inflacion"].min()),
-                "inflacion_final": float(inflation_df["inflacion"].iloc[-1]),
-                "inflacion_final_texto": _fmt_percent(inflation_df["inflacion"].iloc[-1]),
-                "tasa_banxico_final": float(last_row["Tasa_Referencia_Banxico"]),
-                "tasa_banxico_final_texto": _fmt_percent(last_row["Tasa_Referencia_Banxico"]),
+                "inflacion_maxima": float(inflation_df[INFLATION_COLUMN].max()),
+                "inflacion_maxima_texto": _fmt_percent(inflation_df[INFLATION_COLUMN].max()),
+                "inflacion_minima": float(inflation_df[INFLATION_COLUMN].min()),
+                "inflacion_minima_texto": _fmt_percent(inflation_df[INFLATION_COLUMN].min()),
+                "inflacion_final": float(inflation_df[INFLATION_COLUMN].iloc[-1]),
+                "inflacion_final_texto": _fmt_percent(inflation_df[INFLATION_COLUMN].iloc[-1]),
+                "tasa_banxico_final": float(last_row[BANXICO_RATE_COLUMN]),
+                "tasa_banxico_final_texto": _fmt_percent(last_row[BANXICO_RATE_COLUMN]),
                 "diferencial_tasa_vs_inflacion_final": float(
-                    last_row["Tasa_Referencia_Banxico"] - inflation_df["inflacion"].iloc[-1]
+                    last_row[BANXICO_RATE_COLUMN] - inflation_df[INFLATION_COLUMN].iloc[-1]
                 ),
                 "diferencial_tasa_vs_inflacion_final_texto": _fmt_one_decimal(
-                    last_row["Tasa_Referencia_Banxico"] - inflation_df["inflacion"].iloc[-1]
+                    last_row[BANXICO_RATE_COLUMN] - inflation_df[INFLATION_COLUMN].iloc[-1]
                 ),
                 "inflacion_final_tipo": closing_assumptions["inflacion"],
                 "tasa_banxico_tipo": "ultima tasa publicada disponible",
@@ -222,23 +230,23 @@ def build_insight_payload(df, cagrs, base_year, start_year, end_year):
             {
                 "section_id": "dashboard",
                 "nombre": "Dashboard / Resumen Ejecutivo",
-                "salario_real_final": float(last_row["Salario_Minimo_Real"]),
-                "salario_real_final_texto": _fmt_number(last_row["Salario_Minimo_Real"]),
-                "uma_real_final": float(last_row["UMA_Real"]),
-                "uma_real_final_texto": _fmt_number(last_row["UMA_Real"]),
-                "inflacion_final": float(inflation_df["inflacion"].iloc[-1]),
-                "inflacion_final_texto": _fmt_percent(inflation_df["inflacion"].iloc[-1]),
-                "tasa_banxico_final": float(last_row["Tasa_Referencia_Banxico"]),
-                "tasa_banxico_final_texto": _fmt_percent(last_row["Tasa_Referencia_Banxico"]),
+                "salario_real_final": float(last_row[REAL_MINIMUM_WAGE_COLUMN]),
+                "salario_real_final_texto": _fmt_number(last_row[REAL_MINIMUM_WAGE_COLUMN]),
+                "uma_real_final": float(last_row[REAL_UMA_COLUMN]),
+                "uma_real_final_texto": _fmt_number(last_row[REAL_UMA_COLUMN]),
+                "inflacion_final": float(inflation_df[INFLATION_COLUMN].iloc[-1]),
+                "inflacion_final_texto": _fmt_percent(inflation_df[INFLATION_COLUMN].iloc[-1]),
+                "tasa_banxico_final": float(last_row[BANXICO_RATE_COLUMN]),
+                "tasa_banxico_final_texto": _fmt_percent(last_row[BANXICO_RATE_COLUMN]),
                 "cagr_real_salario": float(cagrs["real_salario"]),
                 "cagr_real_salario_texto": _fmt_percent(cagrs["real_salario"]),
                 "cagr_real_uma": float(cagrs["real_uma"]),
                 "cagr_real_uma_texto": _fmt_percent(cagrs["real_uma"]),
                 "diferencial_tasa_vs_inflacion_final": float(
-                    last_row["Tasa_Referencia_Banxico"] - inflation_df["inflacion"].iloc[-1]
+                    last_row[BANXICO_RATE_COLUMN] - inflation_df[INFLATION_COLUMN].iloc[-1]
                 ),
                 "diferencial_tasa_vs_inflacion_final_texto": _fmt_one_decimal(
-                    last_row["Tasa_Referencia_Banxico"] - inflation_df["inflacion"].iloc[-1]
+                    last_row[BANXICO_RATE_COLUMN] - inflation_df[INFLATION_COLUMN].iloc[-1]
                 ),
                 "lectura_esperada": "Sintetizar las señales principales del periodo.",
             },

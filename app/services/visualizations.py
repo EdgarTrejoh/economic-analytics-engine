@@ -3,7 +3,17 @@ import os
 
 import matplotlib.pyplot as plt
 
-from app.schema import YEAR_COLUMN
+from app.indicators import (
+    BANXICO_RATE_COLUMN,
+    INFLATION_COLUMN,
+    MINIMUM_WAGE_COLUMN,
+    NORMALIZED_REAL_MINIMUM_WAGE_COLUMN,
+    NORMALIZED_REAL_UMA_COLUMN,
+    REAL_MINIMUM_WAGE_COLUMN,
+    REAL_UMA_COLUMN,
+    UMA_COLUMN,
+    YEAR_COLUMN,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -18,7 +28,7 @@ def generate_visualizations(df, cagrs, base_year, start_year, end_year, temp_dir
     plt.figure(figsize=(12, 7))
     plt.plot(
         df[YEAR_COLUMN],
-        df["Salario_Minimo_Real"],
+        df[REAL_MINIMUM_WAGE_COLUMN],
         marker="o",
         label="Salario minimo (valor real)",
         color="skyblue",
@@ -27,7 +37,7 @@ def generate_visualizations(df, cagrs, base_year, start_year, end_year, temp_dir
     )
     plt.plot(
         df[YEAR_COLUMN],
-        df["UMA_Real"],
+        df[REAL_UMA_COLUMN],
         marker="o",
         label="UMA valor real",
         color="green",
@@ -36,7 +46,7 @@ def generate_visualizations(df, cagrs, base_year, start_year, end_year, temp_dir
     )
     plt.plot(
         df[YEAR_COLUMN],
-        df["Salario_Minimo_Diario"],
+        df[MINIMUM_WAGE_COLUMN],
         marker="o",
         label="Salario minimo nominal",
         color="orange",
@@ -45,7 +55,7 @@ def generate_visualizations(df, cagrs, base_year, start_year, end_year, temp_dir
     )
     plt.plot(
         df[YEAR_COLUMN],
-        df["UMA_diario"],
+        df[UMA_COLUMN],
         marker="o",
         label="UMA valor nominal",
         color="red",
@@ -61,7 +71,7 @@ def generate_visualizations(df, cagrs, base_year, start_year, end_year, temp_dir
 
     annotation_year = start_year + 3 if (start_year + 3) <= end_year else start_year
     try:
-        annotation_value = df["Salario_Minimo_Real"].loc[
+        annotation_value = df[REAL_MINIMUM_WAGE_COLUMN].loc[
             df[YEAR_COLUMN] == annotation_year
         ].values[0]
         plt.annotate(
@@ -82,7 +92,7 @@ def generate_visualizations(df, cagrs, base_year, start_year, end_year, temp_dir
     plt.figure(figsize=(12, 6))
     plt.plot(
         df[YEAR_COLUMN],
-        df["Salario_Minimo_Real_Normalizado"],
+        df[NORMALIZED_REAL_MINIMUM_WAGE_COLUMN],
         marker="o",
         label=f"Salario Real (Base {base_year} = 100)",
         color="skyblue",
@@ -90,7 +100,7 @@ def generate_visualizations(df, cagrs, base_year, start_year, end_year, temp_dir
     )
     plt.plot(
         df[YEAR_COLUMN],
-        df["UMA_Real_Normalizado"],
+        df[NORMALIZED_REAL_UMA_COLUMN],
         marker="o",
         label=f"UMA Real (Base {base_year} = 100)",
         color="green",
@@ -137,7 +147,7 @@ def generate_visualizations(df, cagrs, base_year, start_year, end_year, temp_dir
 
     path4 = os.path.join(temp_dir, "plot4.png")
     fig, ax1 = plt.subplots(figsize=(12, 7))
-    ax1.plot(inflation_df[YEAR_COLUMN], inflation_df["inflacion"], marker="o", color="green", linewidth=3, label="Inflacion Anual (%)")
+    ax1.plot(inflation_df[YEAR_COLUMN], inflation_df[INFLATION_COLUMN], marker="o", color="green", linewidth=3, label="Inflacion Anual (%)")
     ax1.set_xlabel("Año", fontsize=12)
     ax1.set_ylabel("Inflacion Anual (%)", color="green", fontsize=12)
     ax1.tick_params(axis="y", labelcolor="green")
@@ -147,7 +157,7 @@ def generate_visualizations(df, cagrs, base_year, start_year, end_year, temp_dir
     ax2 = ax1.twinx()
     ax2.plot(
         inflation_df[YEAR_COLUMN],
-        inflation_df["Tasa_Referencia_Banxico"],
+        inflation_df[BANXICO_RATE_COLUMN],
         marker="s",
         color="red",
         linestyle="--",
@@ -165,8 +175,8 @@ def generate_visualizations(df, cagrs, base_year, start_year, end_year, temp_dir
     fig, (ax1_dash, ax2_dash, ax3_dash) = plt.subplots(3, 1, figsize=(12, 15))
     fig.suptitle(f"Analisis Economico Integral ({start_year}-{end_year})", fontsize=20, fontweight="bold")
 
-    ax1_dash.plot(df[YEAR_COLUMN], df["Salario_Minimo_Real"], marker="o", label="Poder Adquisitivo (Salario)", color="skyblue", linewidth=3)
-    ax1_dash.plot(df[YEAR_COLUMN], df["UMA_Real"], marker="o", label="Poder Adquisitivo (UMA)", color="green", linewidth=3, linestyle="--")
+    ax1_dash.plot(df[YEAR_COLUMN], df[REAL_MINIMUM_WAGE_COLUMN], marker="o", label="Poder Adquisitivo (Salario)", color="skyblue", linewidth=3)
+    ax1_dash.plot(df[YEAR_COLUMN], df[REAL_UMA_COLUMN], marker="o", label="Poder Adquisitivo (UMA)", color="green", linewidth=3, linestyle="--")
     ax1_dash.set_title("Evolucion del Poder Adquisitivo: Salario Minimo vs. UMA", fontsize=14)
     ax1_dash.set_ylabel(f"Valor Diario (MXN a precios de {base_year})", fontsize=12)
     ax1_dash.legend(loc="upper left", fontsize=10)
@@ -189,7 +199,7 @@ def generate_visualizations(df, cagrs, base_year, start_year, end_year, temp_dir
             fontsize=10,
         )
 
-    ax3_dash.plot(inflation_df[YEAR_COLUMN], inflation_df["inflacion"], marker="o", color="green", linewidth=3, label="Inflacion Anual (%)")
+    ax3_dash.plot(inflation_df[YEAR_COLUMN], inflation_df[INFLATION_COLUMN], marker="o", color="green", linewidth=3, label="Inflacion Anual (%)")
     ax3_dash.set_ylabel("Inflacion Anual (%)", color="green", fontsize=12)
     ax3_dash.tick_params(axis="y", labelcolor="green")
     ax3_dash.set_title("Inflacion Anual vs. Tasa de Referencia de Banxico", fontsize=14)
@@ -197,7 +207,7 @@ def generate_visualizations(df, cagrs, base_year, start_year, end_year, temp_dir
     ax3_dash.legend(loc="upper left")
     ax3_dash.set_xticks(inflation_df[YEAR_COLUMN])
     ax3_twin = ax3_dash.twinx()
-    ax3_twin.plot(inflation_df[YEAR_COLUMN], inflation_df["Tasa_Referencia_Banxico"], marker="s", color="red", linestyle="--", linewidth=3, label="Tasa de Referencia Banxico (%)")
+    ax3_twin.plot(inflation_df[YEAR_COLUMN], inflation_df[BANXICO_RATE_COLUMN], marker="s", color="red", linestyle="--", linewidth=3, label="Tasa de Referencia Banxico (%)")
     ax3_twin.set_ylabel("Tasa de Referencia Banxico (%)", color="red", fontsize=12)
     ax3_twin.tick_params(axis="y", labelcolor="red")
     ax3_twin.legend(loc="upper right")
