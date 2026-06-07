@@ -176,7 +176,8 @@ POST /reports
 {
   "recipient_email": "cliente@correo.com",
   "start_year": 2016,
-  "end_year": 2025
+  "end_year": 2025,
+  "nota_metodologica": "Texto opcional"
 }
 ```
 
@@ -185,26 +186,31 @@ POST /reports
 ```json
 {
   "status": "completed",
-  "report_file": "Reporte_Economico_Ejecutivo.pdf",
-  "email_sent": true
+  "report_file_path": "Reporte_Economico_Ejecutivo.pdf",
+  "email_sent": true,
+  "generated_at": "2026-06-07T12:00:00",
+  "start_year": 2016,
+  "end_year": 2025
 }
 ```
 
 ### Entregables
 
-- `app/api/main.py` o `app/api/routes.py`.
+- `app/api/main.py`.
+- `app/api/routes.py`.
+- `app/api/schemas.py`.
 - Endpoint `POST /reports`.
 - Validacion de correo y periodo.
 - Pruebas del endpoint.
 
 ### Checklist
 
-- [ ] Agregar FastAPI al proyecto.
-- [ ] Crear endpoint `POST /reports`.
-- [ ] Conectar endpoint con pipeline.
-- [ ] Validar correo receptor.
-- [ ] Validar periodo inicial y final.
-- [ ] Agregar pruebas con `TestClient`.
+- [x] Agregar FastAPI al proyecto.
+- [x] Crear endpoint `POST /reports`.
+- [x] Conectar endpoint con pipeline.
+- [x] Validar correo receptor.
+- [x] Validar periodo inicial y final.
+- [x] Agregar pruebas con `TestClient`.
 
 ## Etapa 4: Migrar fuente de datos a BigQuery
 
@@ -379,13 +385,13 @@ Convertir la aplicacion en un servicio desplegable.
 
 ## Primer siguiente paso recomendado
 
-Iniciar con la Etapa 3: crear API backend sobre los contratos internos ya definidos.
+Iniciar con la Etapa 4: migrar gradualmente la fuente de datos a BigQuery sobre los contratos internos ya definidos.
 
 El primer movimiento concreto seria crear:
 
-1. `app/api/main.py`.
-2. Endpoint `POST /reports`.
-3. Validacion de correo y periodo.
-4. Pruebas con `TestClient`.
+1. `app/data_sources/bigquery.py`.
+2. `BigQueryDataSource`.
+3. Query parametrizada por periodo.
+4. Pruebas unitarias con mock del cliente de BigQuery.
 
-Con eso la base queda lista para exponer la generacion de reportes sin acoplar la API al calculo financiero ni a Google Sheets.
+Con eso la base queda lista para alternar fuentes de datos sin acoplar la API ni el calculo financiero a Google Sheets.

@@ -10,6 +10,11 @@ Actualmente funciona como un pipeline local modular: carga datos desde Google Sh
 indicadores/
   app/
     __init__.py
+    api/
+      __init__.py
+      main.py
+      routes.py
+      schemas.py
     config.py
     indicators.py
     schema.py
@@ -164,6 +169,8 @@ fpdf>=1.7.2,<2
 python-dotenv>=1.0,<2
 pytest>=7.0
 streamlit>=1.30
+fastapi>=0.110,<0.116
+httpx>=0.27,<1
 ```
 
 La integracion con OpenAI usa HTTP estandar de Python, por lo que no requiere dependencia adicional.
@@ -234,6 +241,29 @@ streamlit run app_ui.py
 
 La UI carga la nota local como valor inicial cuando existe, pero al generar el reporte la envia en memoria mediante `settings.nota_metodologica`.
 
+## API
+
+La API backend esta implementada con FastAPI en `app/api/`.
+
+Endpoint disponible:
+
+```text
+POST /reports
+```
+
+Request:
+
+```json
+{
+  "recipient_email": "cliente@example.com",
+  "start_year": 2018,
+  "end_year": 2020,
+  "nota_metodologica": "Texto opcional"
+}
+```
+
+El endpoint valida correo y periodo con Pydantic, construye un `ReportRequest`, llama `run_pipeline` y devuelve un response basado en `ReportResult`. El flujo es sincrono y usa el pipeline actual sin modificar su comportamiento.
+
 ## Pruebas
 
 Ejecutar la suite:
@@ -277,11 +307,14 @@ Cobertura actual de pruebas:
 - Manejo de conexion SMTP fallida antes de inicializar servidor.
 - Visualizacion de inflacion sin mostrar el ano base 2016.
 - Layout compacto de lecturas ejecutivas para evitar cortes de texto.
+- Endpoint `POST /reports` con FastAPI.
+- Validaciones de correo y periodo en la API.
+- Construccion de `ReportRequest` desde payload HTTP.
 
 Estado actual verificado:
 
 ```text
-52 passed
+55 passed
 ```
 
 ## Archivos principales
@@ -293,6 +326,18 @@ Punto de entrada principal del pipeline modular. Usa `app.services.pipeline.run_
 ### `app_ui.py`
 
 Interfaz temporal en Streamlit para capturar correo destinatario, editar la nota metodologica y ejecutar el pipeline. La nota se pasa en memoria al reporte.
+
+### `app/api/main.py`
+
+Aplicacion FastAPI principal. Registra las rutas de la API.
+
+### `app/api/routes.py`
+
+Define el endpoint `POST /reports`, construye `ReportRequest`, ejecuta `run_pipeline` y devuelve `ReportResponse`.
+
+### `app/api/schemas.py`
+
+Define los modelos Pydantic de request/response y las validaciones de correo y periodo.
 
 ### `app/config.py`
 
@@ -368,12 +413,16 @@ Mapa de trabajo para evolucionar el proyecto hacia una aplicacion modular con AP
 
 ## Estado de arquitectura
 
-El proyecto ya completo la Etapa 1 del plan: modularizacion sin cambio de comportamiento general. Tambien completo la Etapa 1.5 para centralizar el catalogo de indicadores y la Etapa 2 para definir contratos internos.
+El proyecto ya completo la Etapa 1 del plan: modularizacion sin cambio de comportamiento general. Tambien completo la Etapa 1.5 para centralizar el catalogo de indicadores, la Etapa 2 para definir contratos internos y la Etapa 3 para exponer el pipeline mediante FastAPI.
 
 Estructura base actual:
 
 ```text
 app/
+  api/
+    main.py
+    routes.py
+    schemas.py
   config.py
   indicators.py
   schema.py
@@ -410,7 +459,7 @@ Resumen de etapas:
 1. Modularizar sin cambiar comportamiento. Completada.
 1.5. Preparar extensibilidad de indicadores. Completada.
 2. Definir modelos internos como `ReportRequest` y `ReportResult`. Completada.
-3. Crear API backend con FastAPI.
+3. Crear API backend con FastAPI. Completada.
 4. Migrar fuente de datos a BigQuery.
 5. Crear frontend para capturar correo receptor y periodo.
 6. Ejecutar reportes de forma asincrona.
@@ -427,6 +476,6 @@ Resumen de etapas:
 
 ## Siguiente paso recomendado
 
-Iniciar la Etapa 3 del plan: crear API backend con FastAPI usando `ReportRequest`, `ReportResult` y la interfaz de fuente de datos ya definida.
+Iniciar la Etapa 4 del plan: migrar gradualmente la fuente de datos a BigQuery sin modificar calculos, PDF ni API publica.
 
 Antes de agregar muchos indicadores al PDF, conviene que la Etapa 2 o una subetapa posterior introduzca una especificacion de secciones de reporte. El catalogo actual permite crecer en datos y calculos con menos friccion, pero las cinco secciones visuales siguen siendo explicitas por diseno.
