@@ -1,6 +1,7 @@
 import getpass
 import os
 from dataclasses import dataclass
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -9,7 +10,7 @@ DEFAULT_SHEET_URL = (
     "https://docs.google.com/spreadsheets/d/"
     "1JiB0WJPRTcq5yE1Zy3jW7n7K2hgfdRNcwXhiS8P1XTI/edit?usp=sharing"
 )
-DEFAULT_REPORT_FILE_NAME = "Reporte_Economico_Ejecutivo.pdf"
+DEFAULT_REPORT_FILE_NAME = str(Path("output") / "Reporte_Economico_Ejecutivo.pdf")
 APP_PASSWORD_PLACEHOLDER = "TU_CONTRASEÑA_DE_APLICACION_AQUI"
 DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
 
@@ -24,6 +25,7 @@ class Settings:
     ai_insights_enabled: bool = False
     openai_api_key: str | None = None
     openai_model: str = DEFAULT_OPENAI_MODEL
+    nota_metodologica: str | None = None
 
 
 def load_settings(prompt_for_password: bool = True) -> Settings:

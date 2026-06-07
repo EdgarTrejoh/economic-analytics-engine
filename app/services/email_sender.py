@@ -37,6 +37,7 @@ def send_report_email(sender_email, app_password, recipient_email, report_file_n
         logger.error(f"No se pudo encontrar el archivo adjunto: {report_file_name}")
         return
 
+    server = None
     try:
         server = smtplib.SMTP(smtp_server, smtp_port)
         server.starttls()
@@ -48,5 +49,5 @@ def send_report_email(sender_email, app_password, recipient_email, report_file_n
     except Exception as e:
         logger.error(f"Fallo al enviar el correo: {e}")
     finally:
-        if "server" in locals() and server:
+        if server:
             server.quit()

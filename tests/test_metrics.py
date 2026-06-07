@@ -1,6 +1,7 @@
 import pandas as pd
 import pytest
 
+from app.schema import YEAR_COLUMN
 from app.services.metrics import calculate_cagr, calculate_financial_metrics
 
 
@@ -13,7 +14,7 @@ def test_calculate_cagr():
 def test_calculate_financial_metrics_does_not_mutate_input_dataframe():
     df = pd.DataFrame(
         {
-            "Año": [2016, 2017, 2018],
+            YEAR_COLUMN: [2016, 2017, 2018],
             "INPC": [100.0, 105.0, 110.25],
             "Salario_Minimo_Diario": [70.0, 77.0, 84.7],
             "UMA_diario": [70.0, 73.5, 77.175],
@@ -40,7 +41,7 @@ def test_calculate_financial_metrics_does_not_mutate_input_dataframe():
 )
 def test_calculate_financial_metrics_missing_required_columns_raises_key_error(missing_column):
     data = {
-        "Año": [2016, 2017, 2018],
+        YEAR_COLUMN: [2016, 2017, 2018],
         "INPC": [100.0, 105.0, 110.25],
         "Salario_Minimo_Diario": [70.0, 77.0, 84.7],
         "UMA_diario": [70.0, 73.5, 77.175],

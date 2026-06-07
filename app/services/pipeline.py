@@ -42,6 +42,7 @@ def run_pipeline(settings=None):
                 image_paths,
                 settings.report_file_name,
                 insights,
+                getattr(settings, "nota_metodologica", None),
             )
 
             if settings.app_password:
@@ -56,8 +57,9 @@ def run_pipeline(settings=None):
                     "No se proporciono contraseña. El correo no fue enviado, "
                     "pero el reporte se conservo localmente."
                 )
-    except Exception as e:
-        logger.error(f"El pipeline fallo en la ejecucion: {e}")
+    except Exception:
+        logger.exception("El pipeline fallo en la ejecucion")
+        raise
 
 
 def execute_economic_pipeline(settings=None):

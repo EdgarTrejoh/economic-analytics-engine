@@ -17,3 +17,7 @@ __pycache__/
 # Archivos generados temporalmente (imágenes y reportes)
 *.png
 Reporte_Economico_Ejecutivo.pdf
+
+# Datos locales y salidas generadas
+data/
+output/

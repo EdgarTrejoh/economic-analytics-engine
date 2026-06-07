@@ -3,9 +3,10 @@ import os
 
 import matplotlib.pyplot as plt
 
+from app.schema import YEAR_COLUMN
+
 
 logger = logging.getLogger(__name__)
-YEAR_COLUMN = "Año"
 
 
 def generate_visualizations(df, cagrs, base_year, start_year, end_year, temp_dir):

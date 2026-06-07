@@ -8,7 +8,7 @@ from app.services.ai_insights import SECTION_IDS, get_fallback_insights
 
 
 logger = logging.getLogger(__name__)
-METHODOLOGICAL_NOTE_PATH = Path("input") / "nota_metodologica.txt"
+METHODOLOGICAL_NOTE_PATH = Path("data") / "nota_metodologica.txt"
 METHODOLOGICAL_NOTE_TITLE = "Notas metodológicas y supuestos de cierre 2026"
 
 
@@ -50,7 +50,17 @@ class PDFReport(FPDF):
         self.ln(5)
 
 
-def create_pdf_report(df, cagrs, base_year, start_year, end_year, image_paths, report_file_name, insights=None):
+def create_pdf_report(
+    df,
+    cagrs,
+    base_year,
+    start_year,
+    end_year,
+    image_paths,
+    report_file_name,
+    insights=None,
+    nota_metodologica=None,
+):
     """Genera el PDF combinando analisis de texto, imagenes e insights ejecutivos."""
     insights_by_section = _insights_by_section(insights)
     pdf = PDFReport()
@@ -86,8 +96,10 @@ def create_pdf_report(df, cagrs, base_year, start_year, end_year, image_paths, r
     pdf.image(image_paths[4], x=20, w=170)
     _add_executive_insight(pdf, insights_by_section["dashboard"])
 
-    _add_methodological_note_page(pdf)
+    _add_methodological_note_page(pdf, nota_metodologica)
 
+    report_path = Path(report_file_name)
+    report_path.parent.mkdir(parents=True, exist_ok=True)
     pdf.output(report_file_name)
     logger.info(f"Reporte '{report_file_name}' generado exitosamente.")
 
@@ -120,8 +132,10 @@ def _add_executive_insight(pdf, insight):
     pdf.multi_cell(0, line_height, implicacion)
 
 
-def _add_methodological_note_page(pdf):
-    note_text = _read_methodological_note()
+def _add_methodological_note_page(pdf, nota_text: str | None = None):
+    note_text = nota_text.strip() if isinstance(nota_text, str) else None
+    if note_text is None:
+        note_text = _read_methodological_note()
     if not note_text:
         return
 

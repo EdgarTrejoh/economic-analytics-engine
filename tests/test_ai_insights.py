@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 
+from app.schema import YEAR_COLUMN
 from app.services import ai_insights
 
 
@@ -19,7 +20,7 @@ def _settings(enabled=False, api_key=None):
 def _df():
     return pd.DataFrame(
         {
-            "Año": [2016, 2017, 2018],
+            YEAR_COLUMN: [2016, 2017, 2018],
             "Salario_Minimo_Real": [70.0, 73.3, 76.8],
             "UMA_Real": [70.0, 70.0, 70.0],
             "Salario_Minimo_Real_Normalizado": [100.0, 104.7, 109.8],
@@ -75,14 +76,16 @@ def test_build_insight_payload_includes_sections_assumptions_and_derived_metrics
     sections = {section["section_id"]: section for section in payload["secciones"]}
 
     assert [section["section_id"] for section in payload["secciones"]] == ai_insights.SECTION_IDS
-    assert payload["supuestos_2026"] == {
-        "inflacion_2026": "estimado de Banxico al mes de diciembre",
+    assert payload["supuestos_cierre"] == {
+        "inflacion": "dato de cierre 2018",
         "tasa_banxico": "ultima tasa de referencia publicada disponible",
-        "nota_interpretacion": "No tratar 2026 como cierre observado definitivo si corresponde a estimacion.",
+        "nota_interpretacion": "Tratar el cierre como dato observado si la fuente de entrada ya esta consolidada.",
     }
     assert sections["poder_adquisitivo"]["brecha_salario_uma_real_final"] == pytest.approx(6.8)
+    assert sections["poder_adquisitivo"]["brecha_salario_uma_real_final_texto"] == "6.80"
     assert sections["base_2016"]["brecha_normalizada_final"] == pytest.approx(9.8)
     assert sections["base_2016"]["relacion_salario_vs_uma_final"] == pytest.approx(1.098)
+    assert sections["cagr"]["cagr_real_salario_texto"] == "4.70%"
     assert sections["inflacion_banxico"]["diferencial_tasa_vs_inflacion_final"] == pytest.approx(1.0)
 
 
@@ -142,6 +145,32 @@ def test_parse_ai_insights_replaces_weak_editorial_terms_with_fallback():
     assert insights[3]["implicacion"] == fallback[3]["implicacion"]
 
 
+def test_parse_ai_insights_uses_payload_validations_for_numbers_cagr_and_unsupported_inference():
+    payload = ai_insights.build_insight_payload(_df(), _cagrs(), 2016, 2016, 2018)
+    fallback = ai_insights.get_fallback_insights(payload)
+    response = json.loads(_valid_ai_json())
+    response["insights"][0]["comentario"] = "El salario real supera a la UMA."
+    response["insights"][2]["comentario"] = "El CAGR real del salario fue 4.70% y el de UMA fue 0.00%."
+    response["insights"][4]["implicacion"] = "El entorno de tasas favorece el ahorro."
+
+    insights = ai_insights.parse_ai_insights(json.dumps(response), fallback, payload)
+
+    assert insights[0]["comentario"] == fallback[0]["comentario"]
+    assert insights[2]["comentario"] == fallback[2]["comentario"]
+    assert insights[4]["implicacion"] == fallback[4]["implicacion"]
+
+
+def test_build_insight_payload_keeps_2026_as_estimate():
+    df = _df().copy()
+    df.loc[df.index[-1], YEAR_COLUMN] = 2026
+    payload = ai_insights.build_insight_payload(df, _cagrs(), 2016, 2016, 2026)
+
+    assert payload["supuestos_cierre"]["inflacion"] == "estimado Banxico diciembre 2026"
+    assert payload["supuestos_cierre"]["nota_interpretacion"] == (
+        "No tratar 2026 como cierre observado definitivo si corresponde a estimacion."
+    )
+
+
 def test_generate_report_insights_uses_fallback_when_ai_returns_invalid_json(monkeypatch):
     request_ai = MagicMock(return_value="{invalid-json")
     monkeypatch.setattr(ai_insights, "request_ai_insights", request_ai)
@@ -158,6 +187,25 @@ def test_generate_report_insights_uses_fallback_when_ai_returns_invalid_json(mon
     request_ai.assert_called_once()
     assert len(insights) == 5
     assert "76.80" in insights[0]["comentario"]
+
+
+def test_generate_report_insights_returns_static_fallback_when_payload_cannot_be_built(monkeypatch):
+    request_ai = MagicMock(return_value=_valid_ai_json())
+    monkeypatch.setattr(ai_insights, "request_ai_insights", request_ai)
+    monkeypatch.setattr(ai_insights, "build_insight_payload", MagicMock(side_effect=KeyError(YEAR_COLUMN)))
+
+    insights = ai_insights.generate_report_insights(
+        _df(),
+        _cagrs(),
+        2016,
+        2016,
+        2018,
+        _settings(enabled=True, api_key="test-key"),
+    )
+
+    request_ai.assert_not_called()
+    assert len(insights) == 5
+    assert insights[0]["titulo"] == "Divergencia real entre indicadores"
 
 
 def test_generate_report_insights_uses_dynamic_fallback_when_disabled():
@@ -192,12 +240,8 @@ def test_dynamic_fallback_avoids_forbidden_editorial_terms():
         "decisiones de política monetaria",
     ]
     assert all(term not in full_text for term in forbidden_terms)
-    assert insights[0]["implicacion"] == (
-        "La mejora relativa del salario minimo fortalece la capacidad de compra medida contra la UMA."
-    )
-    assert insights[1]["implicacion"] == (
-        "La brecha indexada confirma un fortalecimiento relativo del salario minimo frente a la UMA."
-    )
+    assert "mejor desempeno real del salario minimo frente a la UMA" in insights[0]["implicacion"]
+    assert "mejor desempeno real del salario minimo frente a la UMA" in insights[1]["implicacion"]
 
 
 def test_get_fallback_insights_returns_exactly_five_insights():
@@ -206,6 +250,29 @@ def test_get_fallback_insights_returns_exactly_five_insights():
     assert len(insights) == 5
     assert [insight["section_id"] for insight in insights] == ai_insights.SECTION_IDS
 
+
+def test_load_system_prompt_interpolates_forbidden_terms(tmp_path):
+    prompt_path = tmp_path / "prompt.md"
+    prompt_path.write_text(
+        "No uses estos terminos: {forbidden_terms}. Devuelve {{\"insights\": []}}.",
+        encoding="utf-8",
+    )
+
+    prompt = ai_insights.load_system_prompt(prompt_path, ["termino uno", "termino dos"])
+
+    assert "termino uno, termino dos" in prompt
+    assert "{forbidden_terms}" not in prompt
+    assert '{"insights": []}' in prompt
+
+
+def test_load_system_prompt_formats_default_prompt():
+    prompt = ai_insights.load_system_prompt()
+
+    assert "Eres un analista económico experto" in prompt
+    assert "{forbidden_terms}" not in prompt
+    assert '"section_id": "poder_adquisitivo"' in prompt
+
+
 def test_fmt_percent_uses_percentage_points():
     from app.services.ai_insights import _fmt_percent
 
@@ -213,3 +280,4 @@ def test_fmt_percent_uses_percentage_points():
     assert _fmt_percent(10.37) == "10.37%"
     assert _fmt_percent(15.74) == "15.74%"
     assert _fmt_percent(-0.02) == "-0.02%"
+    assert _fmt_percent(-0.0002) == "0.00%"

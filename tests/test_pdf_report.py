@@ -63,6 +63,32 @@ def test_create_pdf_report_adds_methodological_note_when_file_exists(monkeypatch
     pdf_instance.output.assert_called_once_with("reporte.pdf")
 
 
+def test_create_pdf_report_uses_in_memory_methodological_note_before_file(monkeypatch, tmp_path):
+    pdf_instance = MagicMock()
+    pdf_class = MagicMock(return_value=pdf_instance)
+    missing_note_path = tmp_path / "missing-note.txt"
+
+    monkeypatch.setattr(pdf_report, "PDFReport", pdf_class)
+    monkeypatch.setattr(pdf_report, "METHODOLOGICAL_NOTE_PATH", missing_note_path)
+
+    pdf_report.create_pdf_report(
+        df=MagicMock(),
+        cagrs={"nominal_salario": 0.1, "real_salario": 0.05},
+        base_year=2016,
+        start_year=2016,
+        end_year=2018,
+        image_paths=[f"plot{i}.png" for i in range(1, 6)],
+        report_file_name="reporte.pdf",
+        nota_metodologica="Nota capturada desde UI.",
+    )
+
+    cell_texts = [call.args[2] for call in pdf_instance.multi_cell.call_args_list]
+    assert "Nota capturada desde UI." in cell_texts
+    assert "Nota metodologica no encontrada" not in cell_texts
+    assert pdf_instance.add_page.call_count == 6
+    pdf_instance.output.assert_called_once_with("reporte.pdf")
+
+
 def test_create_pdf_report_continues_when_methodological_note_is_missing(monkeypatch, tmp_path, caplog):
     pdf_instance = MagicMock()
     pdf_class = MagicMock(return_value=pdf_instance)

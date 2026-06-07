@@ -1,13 +1,14 @@
 import matplotlib.axes
 import pandas as pd
 
+from app.schema import YEAR_COLUMN
 from app.services.visualizations import generate_visualizations
 
 
 def test_generate_visualizations_excludes_base_year_from_inflation_plots(monkeypatch, tmp_path):
     df = pd.DataFrame(
         {
-            "Año": [2016, 2017, 2018],
+            YEAR_COLUMN: [2016, 2017, 2018],
             "Salario_Minimo_Real": [70.0, 73.3, 76.8],
             "UMA_Real": [70.0, 70.0, 70.0],
             "Salario_Minimo_Diario": [70.0, 77.0, 84.7],

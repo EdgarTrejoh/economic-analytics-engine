@@ -76,3 +76,21 @@ def test_send_report_email_authentication_error_logs_and_quits(monkeypatch, tmp_
     smtp_instance.sendmail.assert_not_called()
     smtp_instance.quit.assert_called_once_with()
     assert "ERROR DE AUTENTICACION" in caplog.text
+
+
+def test_send_report_email_smtp_connection_error_does_not_call_quit(monkeypatch, tmp_path, caplog):
+    report_file = tmp_path / "reporte.pdf"
+    report_file.write_bytes(b"%PDF-1.4 test content")
+
+    smtp_class = MagicMock(side_effect=OSError("connection refused"))
+    monkeypatch.setattr("app.services.email_sender.smtplib.SMTP", smtp_class)
+
+    send_report_email(
+        sender_email="sender@gmail.com",
+        app_password="abcdefghijklmnop",
+        recipient_email="recipient@example.com",
+        report_file_name=str(report_file),
+    )
+
+    smtp_class.assert_called_once_with("smtp.gmail.com", 587)
+    assert "Fallo al enviar el correo: connection refused" in caplog.text

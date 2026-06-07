@@ -2,7 +2,7 @@
 
 Proyecto en Python para generar un reporte economico ejecutivo a partir de indicadores como INPC, salario minimo, UMA y tasa de referencia de Banxico.
 
-Actualmente funciona como un pipeline local modular: carga datos desde Google Sheets, limpia la informacion, calcula metricas financieras, genera graficas, construye un PDF con lecturas ejecutivas por seccion, agrega una nota metodologica externa y opcionalmente envia el reporte por correo usando SMTP de Gmail.
+Actualmente funciona como un pipeline local modular: carga datos desde Google Sheets, normaliza columnas, calcula metricas financieras, genera graficas, construye un PDF con lecturas ejecutivas por seccion, agrega una nota metodologica y opcionalmente envia el reporte por correo usando SMTP de Gmail.
 
 ## Foto actual del proyecto
 
@@ -11,11 +11,14 @@ indicadores/
   app/
     __init__.py
     config.py
+    schema.py
     data_sources/
       __init__.py
       google_sheets.py
     models/
       __init__.py
+    prompts/
+      ai_insights_system_v1.md
     services/
       __init__.py
       ai_insights.py
@@ -24,8 +27,10 @@ indicadores/
       pdf_report.py
       pipeline.py
       visualizations.py
-  input/
+  data/
     nota_metodologica.txt
+  output/
+    Reporte_Economico_Ejecutivo.pdf
   tests/
     __init__.py
     conftest.py
@@ -35,16 +40,14 @@ indicadores/
     test_metrics.py
     test_pdf_report.py
     test_pipeline.py
-    test_reporte_economico.py
     test_visualizations.py
   .env
   .env.example
   .gitignore
+  app_ui.py
   main.py
   README.md
   plan_migracion_modular.md
-  reporte_economico.py
-  Reporte_Economico_Ejecutivo.pdf
   requirements.txt
 ```
 
@@ -54,13 +57,15 @@ Tambien pueden existir carpetas generadas localmente como:
 .venv/
 .pytest_cache/
 __pycache__/
+data/
+output/
 ```
 
 ## Flujo actual
 
 1. Lee configuracion desde `.env`.
 2. Convierte una URL de Google Sheets a una URL de exportacion CSV.
-3. Carga y limpia los datos con `pandas`.
+3. Carga, normaliza encabezados y limpia los datos con `pandas`.
 4. Calcula metricas financieras:
    - Inflacion anual.
    - Indice de precios.
@@ -70,7 +75,7 @@ __pycache__/
 5. Genera visualizaciones con `matplotlib`.
 6. Genera comentarios ejecutivos para las 5 secciones del PDF.
 7. Crea el PDF ejecutivo con `fpdf`.
-8. Agrega una hoja final con la nota metodologica desde `input/nota_metodologica.txt`.
+8. Agrega una hoja final con la nota metodologica enviada por configuracion o, si no existe, desde `data/nota_metodologica.txt`.
 9. Si existe `APP_PASSWORD`, envia el PDF por correo usando Gmail SMTP.
 
 ## Insights ejecutivos
@@ -99,14 +104,14 @@ Los textos generados se filtran para evitar lenguaje debil o ambiguo como:
 - `sugiere`
 - `inflacion controlada`
 
-Si un campo generado por IA contiene alguna frase bloqueada, se reemplaza por fallback ejecutivo.
+Si un campo generado por IA contiene alguna frase bloqueada o incumple validaciones editoriales basicas, se reemplaza por fallback ejecutivo.
 
 ## Nota metodologica
 
-El PDF lee una nota externa desde:
+El PDF puede recibir la nota metodologica en memoria mediante `Settings.nota_metodologica`. Si ese campo no viene definido, lee una nota local desde:
 
 ```text
-input/nota_metodologica.txt
+data/nota_metodologica.txt
 ```
 
 Esa nota se agrega como hoja final con el titulo:
@@ -115,7 +120,7 @@ Esa nota se agrega como hoja final con el titulo:
 Notas metodologicas y supuestos de cierre 2026
 ```
 
-Si el archivo no existe, el PDF se sigue generando y el pipeline registra un warning.
+Si el archivo no existe, el PDF se sigue generando y el pipeline registra un warning. La interfaz Streamlit pasa la nota metodologica directamente en memoria sin escribirla en disco.
 
 ## Requisitos
 
@@ -127,11 +132,12 @@ Si el archivo no existe, el PDF se sigue generando y el pipeline registra un war
 Dependencias actuales:
 
 ```text
-pandas
-matplotlib
-fpdf
-python-dotenv
-pytest
+pandas>=2.0,<3
+matplotlib>=3.7,<4
+fpdf>=1.7.2,<2
+python-dotenv>=1.0,<2
+pytest>=7.0
+streamlit>=1.30
 ```
 
 La integracion con OpenAI usa HTTP estandar de Python, por lo que no requiere dependencia adicional.
@@ -176,6 +182,7 @@ Notas:
 - `SENDER_EMAIL` debe coincidir con la cuenta donde se genero la App Password.
 - Si `APP_PASSWORD` no existe, el reporte se genera localmente pero no se envia por correo.
 - Si `AI_INSIGHTS_ENABLED` no esta activo o falta `OPENAI_API_KEY`, se usan comentarios fallback.
+- `SHEET_URL` debe apuntar a una hoja accesible. Si falla la conexion a Google Sheets, el pipeline propaga un error claro para que la UI lo muestre.
 - Por seguridad, `.env.example` deja `AI_INSIGHTS_ENABLED=false`.
 - No subir `.env` con credenciales reales.
 
@@ -187,17 +194,19 @@ Ejecutar el pipeline completo desde el punto de entrada principal:
 python main.py
 ```
 
-Tambien se conserva compatibilidad con la ejecucion anterior:
-
-```powershell
-python reporte_economico.py
-```
-
 Salida esperada:
 
 ```text
-Reporte_Economico_Ejecutivo.pdf
+output/Reporte_Economico_Ejecutivo.pdf
 ```
+
+Tambien existe una interfaz temporal con Streamlit:
+
+```powershell
+streamlit run app_ui.py
+```
+
+La UI carga la nota local como valor inicial cuando existe, pero al generar el reporte la envia en memoria mediante `settings.nota_metodologica`.
 
 ## Pruebas
 
@@ -216,25 +225,31 @@ Cobertura actual de pruebas:
 - Manejo de error de autenticacion SMTP.
 - Construccion de URL CSV desde Google Sheets.
 - Carga y limpieza de datos.
+- Normalizacion de aliases de columna de año: `Ano`, `Anio`, `Year`, `Ejercicio`.
 - Error de lectura de datos.
+- Error claro de conexion a Google Sheets.
 - Columnas requeridas faltantes.
-- Fachada legacy `reporte_economico.py`.
 - Orquestacion del pipeline.
+- Propagacion de errores del pipeline hacia CLI/UI.
 - Generacion de PDF con bloques `Lectura ejecutiva` e `Implicacion`.
-- Nota metodologica en PDF desde `input/nota_metodologica.txt`.
+- Nota metodologica en PDF desde `data/nota_metodologica.txt`.
+- Nota metodologica en PDF desde memoria.
 - Generacion del PDF aunque falte la nota metodologica.
+- Prompt de insights cargado desde archivo Markdown.
 - Fallback de insights cuando no hay API key.
 - Parseo de JSON esperado de IA.
 - Fallback cuando la IA responde mal.
 - Validacion de exactamente 5 insights.
 - Filtros editoriales contra lenguaje debil o ambiguo en insights.
+- Validaciones post-IA de cifras, longitud e inferencias no soportadas.
+- Manejo de conexion SMTP fallida antes de inicializar servidor.
 - Visualizacion de inflacion sin mostrar el ano base 2016.
 - Layout compacto de lecturas ejecutivas para evitar cortes de texto.
 
 Estado actual verificado:
 
 ```text
-34 passed
+45 passed
 ```
 
 ## Archivos principales
@@ -243,17 +258,21 @@ Estado actual verificado:
 
 Punto de entrada principal del pipeline modular. Usa `app.services.pipeline.run_pipeline`.
 
-### `reporte_economico.py`
+### `app_ui.py`
 
-Fachada de compatibilidad. Reexporta funciones publicas para no romper imports o ejecuciones anteriores.
+Interfaz temporal en Streamlit para capturar correo destinatario, editar la nota metodologica y ejecutar el pipeline. La nota se pasa en memoria al reporte.
 
 ### `app/config.py`
 
-Carga configuracion desde `.env`, incluyendo correo, Google Sheets e insights opcionales con IA.
+Carga configuracion desde `.env`, incluyendo correo, Google Sheets, ruta de salida del reporte, nota metodologica opcional e insights opcionales con IA.
+
+### `app/schema.py`
+
+Centraliza los nombres internos de columnas y alias aceptados del Google Sheet. El pipeline normaliza encabezados como `Ano`, `Anio`, `Year` o `Ejercicio` hacia `Año`.
 
 ### `app/data_sources/google_sheets.py`
 
-Contiene la construccion de URL CSV y la carga/limpieza de datos desde Google Sheets.
+Contiene la construccion de URL CSV, la normalizacion de encabezados y la carga/limpieza de datos desde Google Sheets. Expone `GoogleSheetsConnectionError` para errores legibles de conexion.
 
 ### `app/services/metrics.py`
 
@@ -265,27 +284,35 @@ Contiene la generacion de graficas. La visualizacion de inflacion usa una copia 
 
 ### `app/services/ai_insights.py`
 
-Prepara datos estructurados, solicita una sola respuesta JSON para las 5 secciones cuando IA esta habilitada, filtra lenguaje editorial debil y devuelve fallback si algo falla.
+Prepara datos estructurados, carga el prompt desde `app/prompts/`, solicita una sola respuesta JSON para las 5 secciones cuando IA esta habilitada, aplica validaciones post-IA, filtra lenguaje editorial debil y devuelve fallback si algo falla.
+
+### `app/prompts/ai_insights_system_v1.md`
+
+Contiene el prompt de sistema versionado para los insights ejecutivos.
 
 ### `app/services/pdf_report.py`
 
-Contiene la clase `PDFReport`, la generacion del PDF con bloques de `Lectura ejecutiva` e `Implicacion`, y la hoja final de nota metodologica.
+Contiene la clase `PDFReport`, la generacion del PDF con bloques de `Lectura ejecutiva` e `Implicacion`, crea la carpeta de salida cuando hace falta y agrega la hoja final de nota metodologica desde memoria o archivo.
 
 ### `app/services/email_sender.py`
 
-Contiene el envio SMTP.
+Contiene el envio SMTP y cierre seguro de la conexion cuando el servidor se inicializa.
 
 ### `app/services/pipeline.py`
 
-Orquesta el flujo completo: datos, metricas, insights, visualizaciones, PDF, nota metodologica y correo.
+Orquesta el flujo completo: datos, metricas, insights, visualizaciones, PDF, nota metodologica y correo. Registra errores con traceback y los vuelve a propagar para CLI/UI.
 
-### `input/nota_metodologica.txt`
+### `data/nota_metodologica.txt`
 
-Contiene las notas metodologicas y supuestos de cierre 2026 que se agregan al final del PDF.
+Contiene las notas metodologicas y supuestos de cierre 2026 que se agregan al final del PDF. La carpeta `data/` esta ignorada por Git para mantener datos locales fuera del repositorio.
+
+### `output/`
+
+Carpeta local donde se depositan los reportes generados. Esta ignorada por Git.
 
 ### `tests/`
 
-Contiene pruebas unitarias por modulo y una prueba minima de compatibilidad legacy.
+Contiene pruebas unitarias por modulo.
 
 ### `plan_migracion_modular.md`
 
@@ -293,13 +320,14 @@ Mapa de trabajo para evolucionar el proyecto hacia una aplicacion modular con AP
 
 ## Estado de arquitectura
 
-El proyecto ya completo la Etapa 1 del plan: modularizacion sin cambio de comportamiento general. El codigo principal esta separado por responsabilidades y `reporte_economico.py` se conserva como fachada compatible.
+El proyecto ya completo la Etapa 1 del plan: modularizacion sin cambio de comportamiento general. El codigo principal esta separado por responsabilidades y `main.py` queda como punto de entrada principal.
 
 Estructura base actual:
 
 ```text
 app/
   config.py
+  schema.py
   data_sources/
     google_sheets.py
   services/
@@ -309,10 +337,15 @@ app/
     pdf_report.py
     email_sender.py
     pipeline.py
+  prompts/
+    ai_insights_system_v1.md
   models/
-input/
+data/
   nota_metodologica.txt
+output/
+  Reporte_Economico_Ejecutivo.pdf
 main.py
+app_ui.py
 tests/
 ```
 

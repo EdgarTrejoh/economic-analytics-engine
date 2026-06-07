@@ -1,8 +1,9 @@
 import logging
 
+from app.schema import YEAR_COLUMN
+
 
 logger = logging.getLogger(__name__)
-YEAR_COLUMN = "Año"
 
 
 def calculate_cagr(start_value, end_value, num_years):
